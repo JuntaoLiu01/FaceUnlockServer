@@ -34,19 +34,24 @@ def generate_encodings(filePath):
 	image = face_recognition.load_image_file(filePath)
 	encodings = face_recognition.face_encodings(image)
 	if encodings == []:
-		return None
+		return []
 	return encodings[0]
-
 
 def save_encodings(filePath,encodings):
 	f = open(filePath,'wb')
 	pickle.dump(encodings,f)
 	f.close()
 
+def get_encodings(filePath):
+	f = open(filePath,'rb')
+	encodings = pickle.load(f)
+	f.close()
+	return encodings
+
 class User(db.Model):
 	__tablename__ = 'users'
 	id  = db.Column(db.Integer,primary_key = True)
-	path = db.Column(db.String(64))
+	path = db.Column(db.String(128))
     #face_token = db.Column(db.String(32), primary_key = True)
     #image = db.Column(db.LargeBinary)
     #face_set_token = db.Column(db.String(32), index = True)
@@ -76,20 +81,23 @@ class User(db.Model):
 def detect():
     key = request.form['api_key']
     if not key == API_KEY:
-    	return None
+    	return jsonify({"faces":[]})
 
     file = request.files['image_file']
     #if not file or not allowed_file(file.filename):
     	#return None
 
     #filename = secure_filename(file.filename)
-    filename = generate_file_name() + ".jpg"
+    #filename = generate_file_name() + ".jpg"
+    imagepath = os.path.join(app.root_path,"test.jpg")
+    file.save(imagepath)
+    l = generate_encodings(imagepath)
+    if l == []:
+    	return jsonify({"faces":[]})
+
+    filename = generate_file_name() + ".txt"
     path = os.path.join(app.root_path,app.config['UPLOAD_FOLDER'],filename)
-    file.save(path)
-
-    #filename = generate_file_name() + ".txt"
-    #path = os.path.join(app.root_path,app.config['UPLOAD_FOLDER'],filename)
-
+    save_encodings(path,l)
     
     user = User(path = path)
     db.session.add(user)
@@ -101,7 +109,7 @@ def detect():
     	g.user = result
     	token = g.user.generate_token()
     
-    image = face_recognition.load_image_file(path)
+    image = face_recognition.load_image_file(imagepath)
     face_locations = face_recognition.face_locations(image)
     faces = []
     for face_location in face_locations:
@@ -130,7 +138,7 @@ def detect():
 def create_set():
 	key = request.form["api_key"]
 	if not key == API_KEY:
-		return None
+		return jsonify({"faceset_token" : ""})
 
 	dirPath = os.path.join(app.root_path,app.config['UPLOAD_FOLDER'],generate_file_name())
 
@@ -151,18 +159,18 @@ def create_set():
 def add_face():
 	key = request.form["api_key"]
 	if not key == API_KEY:
-		return None
+		return jsonify({"face_added":0})
 
 	face_token  = request.form["face_token"]
 	faceset_token = request.form["faceset_token"]
 
 	face_user = User.verify_token(face_token)
 	if not face_user:
-		return None
+		return jsonify({"face_added":0})
 
 	faceset_user = User.verify_token(faceset_token)
 	if not faceset_user:
-		return None
+		return jsonify({"face_added":0})
 
 	filename = os.path.basename(face_user.path)
 	newPath = os.path.join(faceset_user.path,filename)
@@ -179,14 +187,14 @@ def add_face():
 def delete_face():
 	key = request.form['api_key']
 	if not key == API_KEY:
-		return None
+		return jsonify({"face_removed":0})
 
 	face_token  = request.form["face_token"]
 	faceset_token = request.form["faceset_token"]
 
 	face_user = User.verify_token(face_token)
 	if not face_user:
-		return None
+		return jsonify({"face_removed":0})
 
 	path = face_user.path
 	os.remove(path)
@@ -201,36 +209,36 @@ def delete_face():
 def search_face():
 	key = request.form['api_key']
 	if not key == API_KEY:
-		return None
+		return jsonify({"results":[]})
     
 	faceset_token = request.form["faceset_token"]
 	faceset_user = User.verify_token(faceset_token)
 	if not faceset_token:
-		return None
+		return jsonify({"results":[]})
 
 	image = request.files["image_file"]
-	if not image or not allowed_file(image.filename):
-		return None
+	#if not image or not allowed_file(image.filename):
+		#return None
 
 	imagePath = os.path.join(app.root_path,"test.jpg")
 	image.save(imagePath)
 	verifyImage = face_recognition.load_image_file(imagePath)
 	verifyImage_encoding = face_recognition.face_encodings(verifyImage)
 	if verifyImage_encoding == []:
-		return jsonify({"confidence":0})
+		return jsonify({"results":[]})
+	verifyImage_encoding = verifyImage_encoding[0]
 
 	re  = []
-	dirPath = faceset_user.path;
+	if not faceset_user:
+		return jsonify({"results":[]})
+	dirPath = faceset_user.path
 	files = os.listdir(dirPath)
 	for file in files:
 		if not os.path.isdir(file):
 			path = os.path.join(dirPath,file)
-			templateImage = face_recognition.load_image_file(path)
-			templateImage_encoding = face_recognition.face_encodings(templateImage)
-			if templateImage_encoding == []:
-				continue
-			known_encodings = [templateImage_encoding[0],templateImage_encoding[0]]
-			distance = face_recognition.face_distance(known_encodings,verifyImage_encoding[0])[0]
+			templateImage_encoding = get_encodings(path)
+			known_encodings = [templateImage_encoding,templateImage_encoding]
+			distance = face_recognition.face_distance(known_encodings,verifyImage_encoding)[0]
 			confidence = 100 - distance * 100
 			user = User.query.filter_by(path = path).first()
 			if user:
@@ -238,8 +246,8 @@ def search_face():
 				face_token = g.user.generate_token()
 				re.append({"cofidence":confidence,"face_token":face_token})
 
-    if re == []:
-    	return jsonify({"confidence":0})
+	if re == []:
+		return jsonify({"confidence":0})
 
 	return jsonify({"results":re})	
 

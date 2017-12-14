@@ -30,8 +30,7 @@ def generate_file_name():
 	ticks = time.time()
 	return hashlib.md5(str(ticks)).hexdigest()
 
-def generate_encodings(filePath):
-	image = face_recognition.load_image_file(filePath)
+def generate_encodings(image):
 	encodings = face_recognition.face_encodings(image)
 	if encodings == []:
 		return []
@@ -83,15 +82,12 @@ def detect():
     if not key == API_KEY:
     	return jsonify({"faces":[]})
 
-    file = request.files['image_file']
+    image = request.files['image_file']
+    image = face_recognition.load_image_file(image)
     #if not file or not allowed_file(file.filename):
     	#return None
 
-    #filename = secure_filename(file.filename)
-    #filename = generate_file_name() + ".jpg"
-    imagepath = os.path.join(app.root_path,"test.jpg")
-    file.save(imagepath)
-    l = generate_encodings(imagepath)
+    l = generate_encodings(image)
     if l == []:
     	return jsonify({"faces":[]})
 
@@ -109,7 +105,6 @@ def detect():
     	g.user = result
     	token = g.user.generate_token()
     
-    image = face_recognition.load_image_file(imagepath)
     face_locations = face_recognition.face_locations(image)
     faces = []
     for face_location in face_locations:
@@ -220,13 +215,10 @@ def search_face():
 	#if not image or not allowed_file(image.filename):
 		#return None
 
-	imagePath = os.path.join(app.root_path,"test.jpg")
-	image.save(imagePath)
-	verifyImage = face_recognition.load_image_file(imagePath)
-	verifyImage_encoding = face_recognition.face_encodings(verifyImage)
+	verifyImage = face_recognition.load_image_file(image)
+	verifyImage_encoding =  generate_encodings(verifyImage)
 	if verifyImage_encoding == []:
 		return jsonify({"results":[]})
-	verifyImage_encoding = verifyImage_encoding[0]
 
 	re  = []
 	if not faceset_user:
@@ -245,9 +237,6 @@ def search_face():
 				g.user = user
 				face_token = g.user.generate_token()
 				re.append({"cofidence":confidence,"face_token":face_token})
-
-	if re == []:
-		return jsonify({"confidence":0})
 
 	return jsonify({"results":re})	
 

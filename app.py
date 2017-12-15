@@ -1,61 +1,27 @@
 #-*- coding=utf-8 -*-
 import os,shutil
-import time,hashlib
-import pickle
 import face_recognition
+from utils.func import *
+from config.const import *
 from flask import Flask,request,g,jsonify
 from flask_sqlalchemy import SQLAlchemy
-from werkzeug.utils import secure_filename
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
-#from handler.hd_base import require
-
-UPLOAD_FOLDER = 'pictures'
-API_KEY = 'pre_key'
-ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg'])
+#from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.config['SECRET_KEY']  = 'never ever'
+app.config['SECRET_KEY']  = SECRET_KEY
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root@localhost:3306/facepath'
+app.config['SQLALCHEMY_DATABASE_URI'] = DB_CONFIG
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 
 db = SQLAlchemy(app)
 
-def allowed_file(filename):
-	return '.' in filename and \
-			filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
-def generate_file_name():
-	ticks = time.time()
-	return hashlib.md5(str(ticks)).hexdigest()
-
-def generate_encodings(image):
-	encodings = face_recognition.face_encodings(image)
-	if encodings == []:
-		return []
-	return encodings[0]
-
-def save_encodings(filePath,encodings):
-	f = open(filePath,'wb')
-	pickle.dump(encodings,f)
-	f.close()
-
-def get_encodings(filePath):
-	f = open(filePath,'rb')
-	encodings = pickle.load(f)
-	f.close()
-	return encodings
-
 class User(db.Model):
-	__tablename__ = 'users'
+	__tablename__ = DB_TABLE
 	id  = db.Column(db.Integer,primary_key = True)
-	path = db.Column(db.String(128))
-    #face_token = db.Column(db.String(32), primary_key = True)
-    #image = db.Column(db.LargeBinary)
-    #face_set_token = db.Column(db.String(32), index = True)
+	path = db.Column(db.String(MAX_PATH_LENGTH))
 
-	def generate_token(self, expiration = 30*24*3600):
+	def generate_token(self, expiration = TOKEN_LIFE):
 		s = Serializer(app.config['SECRET_KEY'], expires_in = expiration)
 		return s.dumps({'id': self.id}).decode('ascii')
 
@@ -242,5 +208,5 @@ def search_face():
 
 
 if __name__ == '__main__':
-	app.run(host = '0.0.0.0',port = 5002)	
+	app.run(host = LISTEN,port = PORT)	
  

@@ -83,7 +83,7 @@ def detect():
     	}
 
     	detect = {
-    		"face_retangle": face_retangle,
+    		"face_rectangle": face_retangle,
     		"face_token"   : token
     	}
 
@@ -202,7 +202,7 @@ def search_face():
 			if user:
 				g.user = user
 				face_token = g.user.generate_token()
-				re.append({"cofidence":confidence,"face_token":face_token})
+				re.append({"confidence":confidence,"face_token":face_token})
 
 	return jsonify({"results":re})	
 

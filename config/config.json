@@ -3,9 +3,9 @@
 	"listen":"0.0.0.0",
 	"mysql_actuation":"mysql-python",
 	"mysql_user":"root",
-	"mysql_pass":"",
+	"mysql_pass":"password",
 	"mysql_host":"localhost",
 	"mysql_port":3306,
-	"mysql_dbname":"facepath",
-	"mysql_dbtable":"users"
+	"mysql_dbname":"database",
+	"mysql_dbtable":"table"
 }

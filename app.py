@@ -13,6 +13,7 @@ app.config['SECRET_KEY']  = SECRET_KEY
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['SQLALCHEMY_DATABASE_URI'] = DB_CONFIG
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
+app.config['IMAGE_PATH'] = os.path.join(app.root_path,app.config['UPLOAD_FOLDER'])
 
 db = SQLAlchemy(app)
 
@@ -57,16 +58,16 @@ def detect():
     if l == []:
     	return jsonify({"faces":[]})
 
-    filename = generate_file_name() + ".txt"
-    path = os.path.join(app.root_path,app.config['UPLOAD_FOLDER'],filename)
-    save_encodings(path,l)
+    fileName = generate_file_name() + ".txt"
+    filePath = os.path.join(app.config['IMAGE_PATH'],fileName)
+    save_encodings(filePath,l)
     
-    user = User(path = path)
+    user = User(path = fileName)
     db.session.add(user)
     db.session.commit()
 
     token = ""
-    result = User.query.filter_by(path = path).first()
+    result = User.query.filter_by(path = fileName).first()
     if result:
     	g.user = result
     	token = g.user.generate_token()
@@ -101,16 +102,17 @@ def create_set():
 	if not key == API_KEY:
 		return jsonify({"faceset_token" : ""})
 
-	dirPath = os.path.join(app.root_path,app.config['UPLOAD_FOLDER'],generate_file_name())
+	dirName = generate_file_name()
+	dirPath = os.path.join(app.config['IMAGE_PATH'],dirName)
 
 	if not os.path.exists(dirPath):
 		os.mkdir(dirPath)
 
-	user = User(path = dirPath)
+	user = User(path = dirName)
 	db.session.add(user)
 	db.session.commit()
 
-	result = User.query.filter_by(path = dirPath).first()
+	result = User.query.filter_by(path = dirName).first()
 	g.user = result
 	token = g.user.generate_token()
 
@@ -133,11 +135,12 @@ def add_face():
 	if not faceset_user:
 		return jsonify({"face_added":0})
 
-	filename = os.path.basename(face_user.path)
-	newPath = os.path.join(faceset_user.path,filename)
-	shutil.move(face_user.path,newPath)
+	fileName = face_user.path
+	oldPath = os.path.join(app.config['IMAGE_PATH'],fileName)
+	newPath = os.path.join(app.config['IMAGE_PATH'],faceset_user.path,fileName)
+	shutil.move(oldPath,newPath)
 
-	face_user.path = newPath
+	face_user.path = os.path.join(faceset_user.path,fileName)
 	db.session.add(face_user)
 	db.session.commit()
 
@@ -151,13 +154,14 @@ def delete_face():
 		return jsonify({"face_removed":0})
 
 	face_token  = request.form["face_token"]
-	faceset_token = request.form["faceset_token"]
+	#faceset_token = request.form["faceset_token"]
 
 	face_user = User.verify_token(face_token)
 	if not face_user:
 		return jsonify({"face_removed":0})
 
-	path = face_user.path
+	fileName = face_user.path
+	path  = os.path.join(app.config['IMAGE_PATH'],fileName)
 	os.remove(path)
 
 	db.session.delete(face_user)
@@ -189,7 +193,7 @@ def search_face():
 	re  = []
 	if not faceset_user:
 		return jsonify({"results":[]})
-	dirPath = faceset_user.path
+	dirPath = os.path.join(app.config['IMAGE_PATH'],faceset_user.path)
 	files = os.listdir(dirPath)
 	for file in files:
 		if not os.path.isdir(file):
@@ -198,7 +202,8 @@ def search_face():
 			known_encodings = [templateImage_encoding,templateImage_encoding]
 			distance = face_recognition.face_distance(known_encodings,verifyImage_encoding)[0]
 			confidence = 100 - distance * 100
-			user = User.query.filter_by(path = path).first()
+			filePath = os.path.join(faceset_user.path,file)
+			user = User.query.filter_by(path = filePath).first()
 			if user:
 				g.user = user
 				face_token = g.user.generate_token()

@@ -1,11 +1,10 @@
 {
 	"port":5002,
 	"listen":"0.0.0.0",
-	"mysql_actuation":"mysql-python",
 	"mysql_user":"root",
-	"mysql_pass":"",
-	"mysql_host":"localhost",
+	"mysql_pass":"****",
+	"mysql_host":"docker.for.mac.localhost",
 	"mysql_port":3306,
 	"mysql_dbname":"facepath",
-	"mysql_dbtable":"users"
+	"api_key":"pre_key"
 }

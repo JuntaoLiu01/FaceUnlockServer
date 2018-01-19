@@ -6,7 +6,7 @@ from config.const import *
 from flask import Flask,request,g,jsonify
 from flask_sqlalchemy import SQLAlchemy
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
-#from werkzeug.utils import secure_filename
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY']  = SECRET_KEY
@@ -43,7 +43,6 @@ class User(db.Model):
 
 
 @app.route('/detect',methods=['POST'])
-#@require()
 def detect():
     key = request.form['api_key']
     if not key == API_KEY:

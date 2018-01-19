@@ -6,16 +6,11 @@ def get_config():
 	return config_json
 
 def get_db_config(config_json):
-	db_config = "mysql"
-	if config_json['mysql_actuation'] == "mysql-python":
-		db_config = db_config + "://"
-	else:
-		db_config = db_config + str(config_json['mysql_actuation']) + "://"
-
+	db_config = "mysql+pymysql://"
 	if config_json["mysql_pass"] == "":
-		db_config = db_config + str(config_json["mysql_user"])+"@" + str(config_json["mysql_host"]) + ":" + str(config_json["mysql_port"]) + "/" + str(config_json["mysql_dbname"])
+		db_config = db_config + config_json["mysql_user"]+"@" + config_json["mysql_host"] + ":" + str(config_json["mysql_port"]) + "/" + config_json["mysql_dbname"]
  	else:
- 		db_config = db_config + str(config_json["mysql_user"]) + ":" + str(config_json["mysql_pass"]) +  "@" + str(config_json["mysql_host"]) + ":" + str(config_json["mysql_port"]) + "/" + str(config_json["mysql_dbname"])
+ 		db_config = db_config + config_json["mysql_user"] + ":" + config_json["mysql_pass"] +  "@" + config_json["mysql_host"] + ":" + str(config_json["mysql_port"]) + "/" + config_json["mysql_dbname"]
  	return db_config
 
 
@@ -23,13 +18,13 @@ def get_db_config(config_json):
 config_json = get_config()
 
 PORT = config_json['port']
-LISTEN = str(config_json['listen'])
+LISTEN = config_json['listen']
 
 DB_CONFIG = get_db_config(config_json)
-DB_TABLE = str(config_json["mysql_dbtable"])
+DB_TABLE = "users"
 
 UPLOAD_FOLDER = 'pictures'
-API_KEY = 'pre_key'
+API_KEY = config_json["api_key"]
 TOKEN_LIFE = 30 * 24 * 3600
 MAX_PATH_LENGTH = 128
 SECRET_KEY = 'never ever'
